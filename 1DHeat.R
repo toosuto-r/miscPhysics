@@ -37,9 +37,9 @@ timeStep<-10
 startTime<-0
 timeLim<-60*60*24
 
-# specific heat capacity of pyrex (K/kg)
+# specific heat capacity of pyrex (K/kg/degC)
 cp<-753
-# and in J/g
+# and in J/g/degC
 cp<-cp/1000
 
 # density of pyrex (g/cm^3)
