@@ -1,37 +1,62 @@
-library(ggplot2)
-library(RColorBrewer)
+# check if the required packages are there, and install if they aren't
+
+if(!require("ggplot2",character.only = TRUE)){
+  install.packages("ggplot2",dep=TRUE)
+  if(!require("ggplot2",character.only = TRUE)) stop("Package not found")
+}
+if(!require("RColorBrewer",character.only = TRUE)){
+  install.packages("RColorBrewer",dep=TRUE)
+  if(!require("RColorBrewer",character.only = TRUE)) stop("Package not found")
+}
+if(!require("reshape2",character.only = TRUE)){
+  install.packages("reshape2",dep=TRUE)
+  if(!require("reshape2",character.only = TRUE)) stop("Package not found")
+}
+
+
 
 ptm<-proc.time()
 
 
-#define the width of the cylinder (for heat capacity) and the length
-cylWidth<-0.1
-cylLength<-2
+#define the width of the cylinder (for heat capacity) and the length (in cm)
+cylWidth<-20
+cylLength<-200
 
 # define a starting temperature for the first element (degrees C)
 tempStart<-600
 
-# define the x step size
-stepSize<-0.1
-timeStep<-0.0001
+# define the x step size (m)
+stepSize<-0.001
+timeStep<-0.0000001
+
+#define the x step size (cm)
+stepSize<-5
+timeStep<-10
 
 # define time parameters (in s)
 startTime<-0
-timeLim<-10000
+timeLim<-60000
 
-# specific heat capacity of pyrex
+# specific heat capacity of pyrex (K/kg)
 cp<-753
+# and in J/g
+cp<-cp/1000
 
-# density of pyrex
+# density of pyrex (g/cm^3)
 rho<-2.21
 
-# thermal conductivity of pyrex
-k<-1.005
+#density in g/mm^3
+rho<-rho/(10^3)
+
+# thermal conductivity of pyrex (W/m/K)
+k<-1.14
+# and in W/mm/K
+k<-k/1000
 
 roomTemp<-20
 
 # record spatial temp profile every no. of seconds:
-timeSnapShot<-100
+timeSnapShot<-60
 
 # loss rate
 lossRate<-0
@@ -57,9 +82,10 @@ tempFrame<-data.frame(cylMesh,temp)
 # only allow it to run if it meets the convergence criteria
 if ((timeStep/stepSize^2)<=0.5){
   
+  p<-startTime  
   # for each time use the explicit method (forward time differential, central second
   # order spatial differential) to numerically solve and iterate the 1D heat eqn
-  for (p in seq(startTime,timeLim,timeStep)){
+  while (p<=timeLim){
     
     # create vectors holding all of the spatial heat values (current, offset left and offset right by one)
     # vectors instead of loop sidesteps the possibility of non-simultaneous solving, i.e. double-updating points
@@ -80,12 +106,26 @@ if ((timeStep/stepSize^2)<=0.5){
     # use the energy deposited to calc rise above room temp (20)
     temp<-thisHeat/(cp*rho*stepSize*pi*(cylWidth/2)^2)+roomTemp
     
-    # every some number of runs, take an output snapshot
-    if (p %% timeSnapShot==0){
+    rm(lastHeat)
+    rm(nextHeat)
+    rm(futureHeat)
+    
+    # every some number of runs, take an output snapshot 
+    # (sometimes returns rouding errors)
+    #print(checkP)
+    checkP<-(p/timeStep)%%(timeSnapShot/timeStep)
+    #print(checkP)
+    if (checkP<=0.5){
+      print(p)
       tempFrame<-cbind(tempFrame,temp)
     }
+    gc()
+    
+    #print(p)
+    p<-p+timeStep
     
   }
+  
 } else {
   cat("The square of the spatial step should be no more than twice the time step (currently ",(timeStep/stepSize^2),")\n",sep="")
   cat("Recommended maximum spatial step for this time step: ",((timeStep/0.5)^0.5),"\n", sep="")
@@ -93,16 +133,18 @@ if ((timeStep/stepSize^2)<=0.5){
 }
 temp<-thisHeat/(cp*rho*stepSize*pi*(cylWidth/2)^2)+20
 
+names(tempFrame)<-c("cylMesh",(seq(1,ncol(tempFrame)-1))*timeSnapShot)
+
 tempMelt<-melt(tempFrame,id="cylMesh")
 
 
 # define a colour palette to be interpolated - use yellow/orange/red and reverse later
 cols <- colorRampPalette(brewer.pal(9, "YlOrRd"))
 pall <- cols(length(unique(tempMelt$variable)))
-dev.new()
+#dev.new()
 
 # plot the data frame up, using the previously mentioned colour palette
 timePlot<-ggplot(tempMelt,aes(cylMesh,y=value,color=variable))+geom_line()
-timePlot+scale_colour_manual(values=rev(pall))+labs(x="x (m)", y=expression(paste("Temperature (",degree,"C) ")))+theme(legend.position="none")
+timePlot+scale_colour_manual(values=rev(pall))+labs(x="x (mm)", y=expression(paste("Temperature (",degree,"C) ")))+theme(legend.position="none")
 
 print(proc.time()-ptm)
