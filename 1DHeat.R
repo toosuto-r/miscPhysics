@@ -35,7 +35,7 @@ timeStep<-10
 
 # define time parameters (in s)
 startTime<-0
-timeLim<-60000
+timeLim<-60*60*24
 
 # specific heat capacity of pyrex (K/kg)
 cp<-753
@@ -85,7 +85,7 @@ if ((timeStep/stepSize^2)<=0.5){
   p<-startTime  
   # for each time use the explicit method (forward time differential, central second
   # order spatial differential) to numerically solve and iterate the 1D heat eqn
-  while (p<=timeLim){
+  while (p<timeLim){
     
     # create vectors holding all of the spatial heat values (current, offset left and offset right by one)
     # vectors instead of loop sidesteps the possibility of non-simultaneous solving, i.e. double-updating points
@@ -141,10 +141,14 @@ tempMelt<-melt(tempFrame,id="cylMesh")
 # define a colour palette to be interpolated - use yellow/orange/red and reverse later
 cols <- colorRampPalette(brewer.pal(9, "YlOrRd"))
 pall <- cols(length(unique(tempMelt$variable)))
-#dev.new()
+
+dev.new()
 
 # plot the data frame up, using the previously mentioned colour palette
 timePlot<-ggplot(tempMelt,aes(cylMesh,y=value,color=variable))+geom_line()
-timePlot+scale_colour_manual(values=rev(pall))+labs(x="x (mm)", y=expression(paste("Temperature (",degree,"C) ")))+theme(legend.position="none")
+
+timePlot<-timePlot+scale_colour_manual(values=rev(pall))+labs(x="x (mm)", y=expression(paste("Temperature (",degree,"C) ")))+theme(legend.position="none")
+
+print(timePlot)
 
 print(proc.time()-ptm)
